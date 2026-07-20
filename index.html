@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>🍕 Pizzaria Livre (Online)</title>
+  <!-- Firebase SDKs (carregados da CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ===== ESTILOS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #e3f2fd; color: #1a1a2e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .app { max-width: 1400px; width: 100%; padding: 20px; }
+    .login-screen { background: #fff; border-radius: 20px; padding: 50px 40px; max-width: 460px; margin: 0 auto; border: 1px solid #90caf9; box-shadow: 0 8px 40px rgba(0,0,0,0.1); text-align: center; }
+    .login-screen h1 { font-size: 48px; font-weight: 700; margin-bottom: 4px; color: #0d47a1; }
+    .login-screen h1 span { color: #1565c0; }
+    .login-screen .subtitle { color: #546e7a; font-size: 16px; margin-bottom: 28px; }
+    .login-screen input { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #bbdefb; background: #f5faff; color: #1a1a2e; font-size: 16px; margin-bottom: 12px; }
+    .login-screen input:focus { outline: none; border-color: #1e88e5; }
+    .login-screen .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; }
+    .btn-admin { background: #1565c0; color: #fff; }
+    .btn-admin:hover { background: #0d47a1; }
+    .btn-moto { background: #2e7d32; color: #fff; }
+    .btn-moto:hover { background: #1b5e20; }
+    .login-screen .toggle-login { margin-top: 16px; display: flex; gap: 12px; }
+    .login-screen .toggle-login button { flex: 1; padding: 10px; border: 1px solid #bbdefb; background: transparent; color: #1a1a2e; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .login-screen .toggle-login button.active { background: #e3f2fd; color: #0d47a1; border-color: #1e88e5; font-weight: 600; }
+    .hidden { display: none !important; }
+    .topbar { background: #0d47a1; border-bottom: 2px solid #1565c0; padding: 10px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; border-radius: 12px 12px 0 0; margin-bottom: 20px; }
+    .topbar .logo { font-size: 32px; font-weight: 700; color: #fff; }
+    .topbar .logo span { color: #ffd54f; }
+    .topbar .user-info { display: flex; align-items: center; gap: 16px; font-size: 14px; color: #e3f2fd; }
+    .topbar .user-info .btn-sair { background: #d32f2f; border: none; color: #fff; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .topbar .user-info .btn-sair:hover { background: #b71c1c; }
+    .menu-admin { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+    .menu-admin button { background: #fff; border: 1px solid #90caf9; color: #0d47a1; padding: 8px 18px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 14px; font-weight: 500; }
+    .menu-admin button:hover { background: #bbdefb; }
+    .menu-admin button.active { background: #1565c0; border-color: #0d47a1; color: #fff; }
+    .pagina { display: none; animation: fadeIn 0.3s; }
+    .pagina.ativa { display: block; }
+    @keyframes fadeIn { from { opacity: 0.4; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .card { background: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #bbdefb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .card h3 { font-weight: 500; color: #0d47a1; margin-bottom: 12px; border-bottom: 1px solid #bbdefb; padding-bottom: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .form-group { display: flex; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 14px; }
+    .form-group label { display: flex; flex-direction: column; font-size: 13px; color: #37474f; flex: 1 0 140px; }
+    .form-group input, .form-group select, .form-group textarea { background: #f5faff; border: 1px solid #bbdefb; color: #1a1a2e; padding: 10px 12px; border-radius: 8px; font-size: 15px; margin-top: 4px; width: 100%; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #1e88e5; }
+    .btn { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+    .btn:hover { background: #bbdefb; }
+    .btn-primary { background: #1565c0; color: #fff; border-color: #0d47a1; }
+    .btn-primary:hover { background: #0d47a1; }
+    .btn-success { background: #2e7d32; color: #fff; border-color: #1b5e20; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-danger { background: #d32f2f; color: #fff; border-color: #b71c1c; }
+    .btn-danger:hover { background: #b71c1c; }
+    .btn-warning { background: #f57c00; color: #fff; border-color: #e65100; }
+    .btn-warning:hover { background: #e65100; }
+    .btn-outline { background: transparent; border: 1px solid #90caf9; }
+    .btn-outline:hover { background: #e3f2fd; }
+    .btn-mapa { background: #34a853; color: #fff; border-color: #2d8a47; }
+    .btn-mapa:hover { background: #2d8a47; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table th { text-align: left; color: #37474f; font-weight: 600; padding: 8px 6px; border-bottom: 2px solid #bbdefb; }
+    table td { padding: 8px 6px; border-bottom: 1px solid #e3f2fd; vertical-align: middle; }
+    .status-badge { padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+    .status-pendente { background: #fff3e0; color: #e65100; }
+    .status-rota { background: #e3f2fd; color: #0d47a1; }
+    .status-entregue { background: #e8f5e9; color: #1b5e20; }
+    .vazio { text-align: center; color: #78909c; padding: 30px 0; font-style: italic; }
+    .grid-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .card-resumo { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #bbdefb; text-align: center; }
+    .card-resumo .numero { font-size: 32px; font-weight: 300; color: #0d47a1; }
+    .card-resumo .rotulo { font-size: 13px; color: #546e7a; margin-top: 4px; }
+    .pdv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 800px) { .pdv-grid { grid-template-columns: 1fr; } }
+    .cupom-area { background: #f5faff; border-radius: 10px; padding: 14px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; color: #1a1a2e; min-height: 180px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #bbdefb; }
+    .totais-venda { display: flex; flex-wrap: wrap; gap: 16px 30px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #bbdefb; }
+    .totais-venda .total-geral { font-size: 20px; font-weight: bold; color: #0d47a1; }
+    .pedido-entrega { background: #fff; border: 1px solid #bbdefb; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+    .pedido-entrega .info { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+    .pedido-entrega .endereco { font-size: 14px; color: #0d47a1; margin: 6px 0; }
+    .pedido-entrega .endereco .mapa-link { color: #1565c0; cursor: pointer; text-decoration: underline dotted; margin-left: 8px; }
+    .pedido-entrega .endereco .mapa-link:hover { color: #0d47a1; }
+    .endereco-clicavel { cursor: pointer; color: #1565c0; text-decoration: underline dotted; }
+    .endereco-clicavel:hover { color: #0d47a1; }
+    @media (max-width: 600px) {
+      .topbar { flex-direction: column; align-items: stretch; gap: 8px; }
+      .topbar .user-info { justify-content: space-between; }
+      .menu-admin { justify-content: center; }
+      .login-screen { padding: 30px 20px; }
+      .login-screen h1 { font-size: 36px; }
+      .pdv-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- LOGIN -->
+  <div id="loginScreen" class="login-screen">
+    <h1>🍕 <span>Pizzaria Livre</span></h1>
+    <div class="subtitle">Sistema profissional de gestão (Online)</div>
+    <div class="toggle-login">
+      <button id="btnLoginAdmin" class="active">👨‍💼 Administrador</button>
+      <button id="btnLoginMoto">🛵 Motoboy</button>
+    </div>
+    <div id="loginFormAdmin">
+      <input type="password" id="senhaAdmin" placeholder="Senha do administrador" />
+      <button class="btn btn-admin" id="btnEntrarAdmin">Entrar</button>
+    </div>
+    <div id="loginFormMoto" class="hidden">
+      <input type="text" id="nomeMoto" placeholder="Seu nome" />
+      <button class="btn btn-moto" id="btnEntrarMoto">Entrar como Motoboy</button>
+    </div>
+  </div>
+
+  <!-- SISTEMA -->
+  <div id="sistema" class="hidden">
+
+    <div class="topbar">
+      <div class="logo">🍕 <span id="empresaNomeTopo">Pizzaria Livre</span></div>
+      <div class="user-info">
+        <span id="userNome">Administrador</span>
+        <span id="userTipo" style="font-size:12px;background:rgba(255,255,255,0.15);padding:2px 12px;border-radius:12px;">ADMIN</span>
+        <button class="btn-sair" id="btnSair">Sair</button>
+      </div>
+    </div>
+
+    <!-- MENU ADMIN -->
+    <div id="menuAdmin" class="menu-admin hidden">
+      <button data-pagina="dashboard" class="active">📊 Dashboard</button>
+      <button data-pagina="clientes">👤 Clientes</button>
+      <button data-pagina="produtos">🍕 Produtos</button>
+      <button data-pagina="pedidos">📦 Pedidos</button>
+      <button data-pagina="caixa">💰 Caixa do dia</button>
+      <button data-pagina="motoboys">🛵 Motoboys</button>
+      <button data-pagina="pdv">💳 PDV (Caixa)</button>
+      <button data-pagina="config">⚙️ Configurações</button>
+    </div>
+
+    <!-- MENU MOTOBOY -->
+    <div id="menuMoto" class="menu-admin hidden">
+      <button data-pagina="entregas" class="active">📦 Entregas</button>
+    </div>
+
+    <!-- PÁGINAS -->
+    <section id="pagina-dashboard" class="pagina ativa">
+      <div class="grid-resumo" id="resumoDashboard">
+        <div class="card-resumo"><div class="numero" id="totalPedidos">0</div><div class="rotulo">Total pedidos</div></div>
+        <div class="card-resumo"><div class="numero" id="totalVendasHoje">R$ 0,00</div><div class="rotulo">Faturamento hoje</div></div>
+        <div class="card-resumo"><div class="numero" id="pedidosPendentes">0</div><div class="rotulo">Pendentes</div></div>
+        <div class="card-resumo"><div class="numero" id="pedidosRota">0</div><div class="rotulo">Em rota</div></div>
+      </div>
+      <div class="card"><h3>Últimos pedidos</h3><div id="ultimosPedidos" class="vazio">Nenhum pedido realizado.</div></div>
+    </section>
+
+    <section id="pagina-clientes" class="pagina">
+      <div class="card">
+        <h3>Cadastrar Cliente</h3>
+        <div class="form-group">
+          <label>Nome <input type="text" id="cliNome" placeholder="Nome completo" /></label>
+          <label>Telefone <input type="text" id="cliTelefone" placeholder="(00) 00000-0000" /></label>
+        </div>
+        <div class="form-group">
+          <label>Endereço <input type="text" id="cliEndereco" placeholder="Rua, Av..." /></label>
+          <label>Número <input type="text" id="cliNumero" placeholder="123" /></label>
+          <label>Complemento <input type="text" id="cliComplemento" placeholder="Apto, bloco..." /></label>
+        </div>
+        <div class="form-group">
+          <label>Bairro <input type="text" id="cliBairro" placeholder="Centro" /></label>
+          <label>Cidade <input type="text" id="cliCidade" placeholder="São Paulo" /></label>
+          <label>Estado <input type="text" id="cliEstado" placeholder="SP" /></label>
+          <label>CEP <input type="text" id="cliCep" placeholder="00000-000" /></label>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnSalvarCliente">➕ Salvar Cliente</button>
+          <button class="btn btn-outline hidden" id="btnCancelarCliente">Cancelar</button>
+          <button class="btn btn-mapa" id="btnAbrirMapaCliente">🌍 Ver mapa</button>
+        </div>
+        <input type="hidden" id="editClienteIndex" value="-1" />
+      </div>
+      <div class="card">
+        <h3>Clientes cadastrados</h3>
+        <div style="margin-bottom:12px;">
+          <input type="text" id="buscaCliente" placeholder="🔍 Buscar por nome ou endereço..." style="background:#f5faff;border:1px solid #bbdefb;color:#1a1a2e;padding:10px;border-radius:8px;width:100%;max-width:400px;" />
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Mapa</th><th>Ações</th></tr></thead>
+            <tbody id="tabelaClientes"><tr><td colspan="5" class="vazio">Nenhum cliente cadastrado.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-produtos" class="pagina">
+      <div class="card">
+        <h3>Cadastrar Produto</h3>
+        <div class="form-group">
+          <label>Nome <input type="text" id="prodNome" placeholder="Ex: Coca-Cola 2L" /></label>
+          <label>Pequeno (R$) <input type="number" id="prodPq" step="0.01" placeholder="0.00" /></label>
+          <label>Médio (R$) <input type="number" id="prodMd" step="0.01" placeholder="0.00" /></label>
+          <label>Grande (R$) <input type="number" id="prodGd" step="0.01" placeholder="0.00" /></label>
+        </div>
+        <button class="btn btn-primary" id="btnSalvarProduto">➕ Salvar Produto</button>
+        <button class="btn btn-outline hidden" id="btnCancelarProduto">Cancelar</button>
+        <input type="hidden" id="editProdutoIndex" value="-1" />
+      </div>
+      <div class="card">
+        <h3>Lista de Produtos</h3>
+        <div style="margin-bottom:12px;">
+          <input type="text" id="buscaProduto" placeholder="🔍 Buscar por nome..." style="background:#f5faff;border:1px solid #bbdefb;color:#1a1a2e;padding:10px;border-radius:8px;width:100%;max-width:400px;" />
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Nome</th><th>Pequeno</th><th>Médio</th><th>Grande</th><th>Ações</th></tr></thead>
+            <tbody id="tabelaProdutos"><tr><td colspan="5" class="vazio">Nenhum produto cadastrado.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-pedidos" class="pagina">
+      <div class="card">
+        <h3>Todos os pedidos</h3>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Status</th><th>Motoboy</th><th>Endereço</th></tr></thead>
+            <tbody id="tabelaPedidos"><tr><td colspan="7" class="vazio">Nenhum pedido.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-caixa" class="pagina">
+      <div class="card">
+        <h3>Caixa do dia <span id="dataCaixa" style="font-weight:300;font-size:14px;color:#546e7a;"></span></h3>
+        <div class="grid-resumo" style="margin-bottom:12px;">
+          <div class="card-resumo"><div class="numero" id="caixaTotal">R$ 0,00</div><div class="rotulo">Total arrecadado</div></div>
+          <div class="card-resumo"><div class="numero" id="caixaQtd">0</div><div class="rotulo">Pedidos hoje</div></div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Horário</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th></tr></thead>
+            <tbody id="tabelaCaixa"><tr><td colspan="5" class="vazio">Nenhuma venda hoje.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-motoboys" class="pagina">
+      <div class="card">
+        <h3>Cadastrar Motoboy</h3>
+        <div class="form-group">
+          <label>Nome <input type="text" id="motoNome" placeholder="Nome" /></label>
+          <label>Telefone <input type="text" id="motoTelefone" placeholder="(00) 00000-0000" /></label>
+        </div>
+        <button class="btn btn-primary" id="btnSalvarMoto">➕ Salvar</button>
+        <button class="btn btn-outline hidden" id="btnCancelarMoto">Cancelar</button>
+        <input type="hidden" id="editMotoIndex" value="-1" />
+      </div>
+      <div class="card">
+        <h3>Motoboys cadastrados</h3>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Ações</th></tr></thead>
+            <tbody id="tabelaMotoboys"><tr><td colspan="3" class="vazio">Nenhum motoboy.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-pdv" class="pagina">
+      <div class="card">
+        <h3>💳 Finalizar pedido</h3>
+        <div class="form-group">
+          <label>Cliente <select id="pdvClienteSelect"><option value="">Consumidor final</option></select></label>
+          <label>Forma de pagamento <select id="pdvPagamento"><option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option><option value="pix">PIX</option></select></label>
+        </div>
+        <div class="form-group">
+          <label>Produto <select id="pdvProdutoSelect"><option value="">Selecione</option></select></label>
+          <label>Tamanho <select id="pdvTamanhoSelect"><option value="pequena">Pequeno</option><option value="media">Médio</option><option value="grande">Grande</option></select></label>
+          <label>Qtd <input type="number" id="pdvQtd" value="1" min="1" /></label>
+          <button class="btn btn-primary" id="btnAddProdutoPDV">➕ Adicionar</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Produto</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Total</th><th></th></tr></thead>
+            <tbody id="tabelaPDV"><tr><td colspan="6" class="vazio">Carrinho vazio</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-danger" id="btnLimparPDV">🗑️ Limpar carrinho</button>
+          <button class="btn btn-success" id="btnFinalizarPDV" style="float:right;">💳 Finalizar venda</button>
+        </div>
+        <div style="clear:both;"></div>
+        <div class="card" style="margin-top:16px;border-color:#bbdefb;">
+          <h3>
+            🧾 Cupom
+            <span style="font-weight:400;font-size:14px;">
+              <button class="btn btn-sm btn-primary" id="btnGerarPDF">📄 PDF</button>
+              <button class="btn btn-sm btn-warning" id="btnImprimirCupom">🖨️ Imprimir</button>
+            </span>
+          </h3>
+          <div class="cupom-area" id="cupomPDV">Nenhum item adicionado.</div>
+          <div class="totais-venda">
+            <div>Subtotal: <strong id="pdvSubtotal">R$ 0,00</strong></div>
+            <div class="total-geral">Total: <strong id="pdvTotal">R$ 0,00</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pagina-config" class="pagina">
+      <div class="card">
+        <h3>⚙️ Dados da Empresa</h3>
+        <div class="form-group">
+          <label>Nome da Empresa <input type="text" id="configNome" placeholder="Nome" /></label>
+          <label>Endereço <input type="text" id="configEndereco" placeholder="Rua, número" /></label>
+          <label>Cidade/UF <input type="text" id="configCidade" placeholder="Cidade - UF" /></label>
+          <label>Telefone <input type="text" id="configTelefone" placeholder="(00) 00000-0000" /></label>
+          <label>CNPJ <input type="text" id="configCnpj" placeholder="00.000.000/0000-00" /></label>
+        </div>
+        <button class="btn btn-primary" id="btnSalvarConfig">💾 Salvar configurações</button>
+        <button class="btn btn-outline" id="btnResetConfig">↩️ Restaurar padrão</button>
+      </div>
+    </section>
+
+    <section id="pagina-entregas" class="pagina">
+      <div class="card">
+        <h3>📦 Pedidos para entrega</h3>
+        <div id="listaEntregas" class="vazio">Nenhum pedido pendente.</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  //  CONFIGURAÇÃO DO FIREBASE (SUAS CREDENCIAIS)
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyCRooxp3rQqH-i9BsfVXVoDsSUp1bYL_1g",
+    authDomain: "pizzaria-12124.firebaseapp.com",
+    projectId: "pizzaria-12124",
+    storageBucket: "pizzaria-12124.firebasestorage.app",
+    messagingSenderId: "1074472170431",
+    appId: "1:1074472170431:web:3688a3325ecd86afe6670a"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ============================================================
+  //  VARIÁVEIS GLOBAIS
+  // ============================================================
+  let clientes = [];
+  let produtos = [];
+  let pedidos = [];
+  let motoboys = [];
+  let EMPRESA = {};
+  let senhaAdmin = 'admin123';
+
+  let usuarioAtual = null;
+  let carrinhoPDV = [];
+
+  // ============================================================
+  //  REFERÊNCIAS DOM
+  // ============================================================
+  const loginScreen = document.getElementById('loginScreen');
+  const sistema = document.getElementById('sistema');
+  const loginAdmin = document.getElementById('loginFormAdmin');
+  const loginMoto = document.getElementById('loginFormMoto');
+  const btnAdmin = document.getElementById('btnLoginAdmin');
+  const btnMoto = document.getElementById('btnLoginMoto');
+  const btnEntrarAdmin = document.getElementById('btnEntrarAdmin');
+  const btnEntrarMoto = document.getElementById('btnEntrarMoto');
+  const senhaInput = document.getElementById('senhaAdmin');
+  const nomeMotoInput = document.getElementById('nomeMoto');
+  const btnSair = document.getElementById('btnSair');
+  const userNome = document.getElementById('userNome');
+  const userTipo = document.getElementById('userTipo');
+  const menuAdmin = document.getElementById('menuAdmin');
+  const menuMoto = document.getElementById('menuMoto');
+
+  // ============================================================
+  //  FUNÇÕES DE LEITURA/ESCRITA NO FIREBASE
+  // ============================================================
+  function salvarNoFirebase(caminho, dados) {
+    return db.ref(caminho).set(dados);
+  }
+
+  function carregarDoFirebase(caminho) {
+    return db.ref(caminho).once('value').then(snap => snap.val());
+  }
+
+  // ============================================================
+  //  CARREGAR TODOS OS DADOS DO FIREBASE
+  // ============================================================
+  async function carregarDados() {
+    try {
+      const snap = await db.ref('/').once('value');
+      const data = snap.val() || {};
+      clientes = data.clientes || [];
+      produtos = data.produtos || [];
+      pedidos = data.pedidos || [];
+      motoboys = data.motoboys || [];
+      EMPRESA = data.empresa || {
+        nome: 'Pizzaria Livre',
+        endereco: 'Rua Exemplo, 123 - Centro',
+        cidade: 'São Paulo - SP',
+        telefone: '(11) 99999-8888',
+        cnpj: '12.345.678/0001-99'
+      };
+      senhaAdmin = data.senhaAdmin || 'admin123';
+
+      // Se não houver dados, criar produtos padrão
+      if (produtos.length === 0) {
+        produtos = [
+          { nome: 'Margherita', pequena: 25.00, media: 32.00, grande: 40.00 },
+          { nome: 'Calabresa', pequena: 28.00, media: 35.00, grande: 43.00 },
+          { nome: 'Portuguesa', pequena: 30.00, media: 38.00, grande: 46.00 },
+          { nome: 'Frango com Catupiry', pequena: 32.00, media: 40.00, grande: 48.00 },
+          { nome: 'Chocolate', pequena: 20.00, media: 26.00, grande: 32.00 },
+          { nome: 'Chocolate com Morango', pequena: 22.00, media: 28.00, grande: 35.00 },
+          { nome: 'Mussarela', pequena: 24.00, media: 30.00, grande: 38.00 },
+          { nome: 'Pepperoni', pequena: 29.00, media: 37.00, grande: 45.00 },
+          { nome: 'Coca-Cola 2L', pequena: 10.00, media: 10.00, grande: 10.00 },
+          { nome: 'Guaraná 2L', pequena: 9.00, media: 9.00, grande: 9.00 },
+          { nome: 'Suco de Laranja 500ml', pequena: 7.00, media: 7.00, grande: 7.00 },
+          { nome: 'Água Mineral 500ml', pequena: 4.00, media: 4.00, grande: 4.00 },
+          { nome: 'Cerveja 600ml', pequena: 8.00, media: 8.00, grande: 8.00 },
+          { nome: 'Refrigerante Lata 350ml', pequena: 6.00, media: 6.00, grande: 6.00 },
+          { nome: 'Batata Frita', pequena: 18.00, media: 18.00, grande: 18.00 },
+          { nome: 'Calabresa Acebolada', pequena: 22.00, media: 22.00, grande: 22.00 },
+          { nome: 'Frango à Passarinho', pequena: 25.00, media: 25.00, grande: 25.00 },
+          { nome: 'Mandioca Frita', pequena: 15.00, media: 15.00, grande: 15.00 },
+          { nome: 'Queijo Coalho', pequena: 20.00, media: 20.00, grande: 20.00 }
+        ];
+        await salvarNoFirebase('produtos', produtos);
+      }
+      if (clientes.length === 0) {
+        clientes = [
+          { nome: 'João Silva', telefone: '(11) 99999-1111', endereco: 'Rua das Flores', numero: '123', complemento: 'Apto 45', bairro: 'Centro', cidade: 'São Paulo', estado: 'SP', cep: '01000-000' },
+          { nome: 'Maria Oliveira', telefone: '(11) 99999-2222', endereco: 'Av. Paulista', numero: '1000', complemento: 'Sala 301', bairro: 'Bela Vista', cidade: 'São Paulo', estado: 'SP', cep: '01310-100' }
+        ];
+        await salvarNoFirebase('clientes', clientes);
+      }
+      if (motoboys.length === 0) {
+        motoboys = [
+          { nome: 'Carlos', telefone: '(11) 99999-3333' },
+          { nome: 'Mariana', telefone: '(11) 99999-4444' }
+        ];
+        await salvarNoFirebase('motoboys', motoboys);
+      }
+      if (!data.empresa) {
+        await salvarNoFirebase('empresa', EMPRESA);
+      }
+      if (!data.senhaAdmin) {
+        await salvarNoFirebase('senhaAdmin', 'admin123');
+      }
+
+      // Atualiza a interface
+      document.getElementById('empresaNomeTopo').textContent = EMPRESA.nome || 'Pizzaria Livre';
+      carregarConfiguracoes();
+      carregarClientesSelect();
+      carregarProdutosSelect();
+      atualizarTudo();
+    } catch (e) {
+      console.error('Erro ao carregar dados do Firebase:', e);
+      alert('Erro ao conectar ao Firebase. Verifique sua internet e configuração.');
+    }
+  }
+
+  // ============================================================
+  //  FUNÇÕES DE SALVAMENTO
+  // ============================================================
+  function salvarClientes() { salvarNoFirebase('clientes', clientes); }
+  function salvarProdutos() { salvarNoFirebase('produtos', produtos); }
+  function salvarPedidos() { salvarNoFirebase('pedidos', pedidos); }
+  function salvarMotoboys() { salvarNoFirebase('motoboys', motoboys); }
+  function salvarEmpresa() { salvarNoFirebase('empresa', EMPRESA); }
+  function salvarSenhaAdmin(senha) { salvarNoFirebase('senhaAdmin', senha); }
+
+  // ============================================================
+  //  LOGIN
+  // ============================================================
+  btnAdmin.addEventListener('click', () => {
+    btnAdmin.classList.add('active');
+    btnMoto.classList.remove('active');
+    loginAdmin.classList.remove('hidden');
+    loginMoto.classList.add('hidden');
+  });
+  btnMoto.addEventListener('click', () => {
+    btnMoto.classList.add('active');
+    btnAdmin.classList.remove('active');
+    loginAdmin.classList.add('hidden');
+    loginMoto.classList.remove('hidden');
+  });
+
+  function fazerLogin(tipo) {
+    if (tipo === 'admin') {
+      const senha = senhaInput.value.trim();
+      if (senha === senhaAdmin) {
+        usuarioAtual = { tipo: 'admin', nome: 'Administrador' };
+        entrarSistema();
+      } else {
+        alert('Senha incorreta!');
+        senhaInput.value = '';
+        senhaInput.focus();
+      }
+    } else if (tipo === 'moto') {
+      const nome = nomeMotoInput.value.trim();
+      if (nome.length > 0) {
+        usuarioAtual = { tipo: 'moto', nome: nome };
+        entrarSistema();
+      } else {
+        alert('Digite seu nome.');
+      }
+    }
+  }
+
+  btnEntrarAdmin.addEventListener('click', () => fazerLogin('admin'));
+  btnEntrarMoto.addEventListener('click', () => fazerLogin('moto'));
+  senhaInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') fazerLogin('admin'); });
+  nomeMotoInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') fazerLogin('moto'); });
+
+  function entrarSistema() {
+    loginScreen.classList.add('hidden');
+    sistema.classList.remove('hidden');
+    userNome.textContent = usuarioAtual.nome;
+    if (usuarioAtual.tipo === 'admin') {
+      userTipo.textContent = 'ADMIN';
+      menuAdmin.classList.remove('hidden');
+      menuMoto.classList.add('hidden');
+      navegar('dashboard');
+    } else {
+      userTipo.textContent = 'MOTOBOY';
+      menuAdmin.classList.add('hidden');
+      menuMoto.classList.remove('hidden');
+      navegar('entregas');
+    }
+    atualizarTudo();
+  }
+
+  btnSair.addEventListener('click', () => {
+    if (confirm('Deseja sair?')) {
+      usuarioAtual = null;
+      sistema.classList.add('hidden');
+      loginScreen.classList.remove('hidden');
+      senhaInput.value = '';
+      nomeMotoInput.value = '';
+      btnAdmin.classList.add('active');
+      btnMoto.classList.remove('active');
+      loginAdmin.classList.remove('hidden');
+      loginMoto.classList.add('hidden');
+    }
+  });
+
+  // ============================================================
+  //  NAVEGAÇÃO
+  // ============================================================
+  function navegar(paginaId) {
+    document.querySelectorAll('.pagina').forEach(p => p.classList.remove('ativa'));
+    const alvo = document.getElementById('pagina-' + paginaId);
+    if (alvo) alvo.classList.add('ativa');
+    document.querySelectorAll('.menu-admin button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.menu-admin button[data-pagina="' + paginaId + '"]').forEach(b => b.classList.add('active'));
+    if (paginaId === 'dashboard') atualizarDashboard();
+    if (paginaId === 'clientes') renderizarClientes();
+    if (paginaId === 'produtos') renderizarProdutos();
+    if (paginaId === 'pedidos') renderizarPedidos();
+    if (paginaId === 'caixa') renderizarCaixa();
+    if (paginaId === 'motoboys') renderizarMotoboys();
+    if (paginaId === 'pdv') { carregarProdutosSelect(); carregarClientesSelect(); atualizarPDV(); }
+    if (paginaId === 'config') carregarConfiguracoes();
+    if (paginaId === 'entregas') renderizarEntregas();
+  }
+
+  document.querySelectorAll('.menu-admin button[data-pagina]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (usuarioAtual) navegar(btn.dataset.pagina);
+    });
+  });
+
+  // ============================================================
+  //  ATUALIZAÇÃO GERAL
+  // ============================================================
+  function atualizarTudo() {
+    if (usuarioAtual && usuarioAtual.tipo === 'admin') {
+      atualizarDashboard();
+      renderizarClientes();
+      renderizarProdutos();
+      renderizarPedidos();
+      renderizarCaixa();
+      renderizarMotoboys();
+      carregarClientesSelect();
+      carregarProdutosSelect();
+      atualizarPDV();
+    } else if (usuarioAtual && usuarioAtual.tipo === 'moto') {
+      renderizarEntregas();
+    }
+  }
+
+  // ============================================================
+  //  FUNÇÕES DE ENDEREÇO E MAPA
+  // ============================================================
+  function montarEnderecoCompleto(cliente) {
+    if (!cliente) return '';
+    let partes = [];
+    if (cliente.endereco && cliente.endereco.trim() !== '') partes.push(cliente.endereco.trim());
+    if (cliente.numero && cliente.numero.trim() !== '') partes.push(cliente.numero.trim());
+    if (cliente.complemento && cliente.complemento.trim() !== '') partes.push(cliente.complemento.trim());
+    if (cliente.bairro && cliente.bairro.trim() !== '') partes.push(cliente.bairro.trim());
+    if (cliente.cidade && cliente.cidade.trim() !== '') partes.push(cliente.cidade.trim());
+    if (cliente.estado && cliente.estado.trim() !== '') partes.push(cliente.estado.trim());
+    if (cliente.cep && cliente.cep.trim() !== '') partes.push(cliente.cep.trim());
+    let endereco = partes.join(', ').replace(/\s+/g, ' ').trim();
+    endereco = endereco.replace(/,{2,}/g, ',').trim();
+    return endereco;
+  }
+
+  function abrirGoogleMapsRota(enderecoDestino) {
+    if (!enderecoDestino || enderecoDestino.trim() === '') {
+      alert('Endereço não informado.');
+      return;
+    }
+    const url = `https://www.google.com/maps/dir/?api=1&origin=current+location&destination=${encodeURIComponent(enderecoDestino)}`;
+    window.open(url, '_blank');
+  }
+
+  // ============================================================
+  //  CLIENTES - CRUD
+  // ============================================================
+  function renderizarClientes() {
+    const tbody = document.getElementById('tabelaClientes');
+    const busca = document.getElementById('buscaCliente').value.toLowerCase();
+    let filtrados = clientes;
+    if (busca) {
+      filtrados = clientes.filter(c =>
+        c.nome.toLowerCase().includes(busca) ||
+        (c.endereco && c.endereco.toLowerCase().includes(busca)) ||
+        (c.bairro && c.bairro.toLowerCase().includes(busca)) ||
+        (c.cidade && c.cidade.toLowerCase().includes(busca))
+      );
+    }
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum cliente encontrado.</td></tr>';
+      return;
+    }
+    let html = '';
+    filtrados.forEach((c, idx) => {
+      const originalIndex = clientes.indexOf(c);
+      const enderecoCompleto = montarEnderecoCompleto(c);
+      let enderecoStr = c.endereco || '';
+      if (c.numero) enderecoStr += `, ${c.numero}`;
+      if (c.bairro) enderecoStr += ` - ${c.bairro}`;
+      if (c.cidade) enderecoStr += `, ${c.cidade}`;
+      if (!enderecoStr.trim()) enderecoStr = 'Endereço não informado';
+      html += `<tr>
+        <td>${c.nome}</td>
+        <td>${c.telefone || '-'}</td>
+        <td>
+          ${enderecoCompleto ? 
+            `<span class="endereco-clicavel" onclick="abrirGoogleMapsRota('${encodeURIComponent(enderecoCompleto)}')">${enderecoStr}</span>` : 
+            enderecoStr
+          }
+        </td>
+        <td>
+          ${enderecoCompleto ? 
+            `<button class="btn btn-sm btn-mapa" onclick="abrirGoogleMapsRota('${encodeURIComponent(enderecoCompleto)}')">🗺️</button>` : 
+            '-'
+          }
+        </td>
+        <td>
+          <button onclick="editarCliente(${originalIndex})">✏️</button>
+          <button class="excluir" onclick="excluirCliente(${originalIndex})" style="color:#d32f2f;background:none;border:none;cursor:pointer;">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  document.getElementById('buscaCliente').addEventListener('input', renderizarClientes);
+
+  function salvarCliente() {
+    const nome = document.getElementById('cliNome').value.trim();
+    const telefone = document.getElementById('cliTelefone').value.trim();
+    const endereco = document.getElementById('cliEndereco').value.trim();
+    const numero = document.getElementById('cliNumero').value.trim();
+    const complemento = document.getElementById('cliComplemento').value.trim();
+    const bairro = document.getElementById('cliBairro').value.trim();
+    const cidade = document.getElementById('cliCidade').value.trim();
+    const estado = document.getElementById('cliEstado').value.trim();
+    const cep = document.getElementById('cliCep').value.trim();
+    if (!nome) { alert('Digite o nome do cliente.'); return; }
+    const editIdx = parseInt(document.getElementById('editClienteIndex').value);
+    if (editIdx >= 0) {
+      clientes[editIdx] = { nome, telefone, endereco, numero, complemento, bairro, cidade, estado, cep };
+      document.getElementById('editClienteIndex').value = '-1';
+      document.getElementById('btnCancelarCliente').classList.add('hidden');
+    } else {
+      clientes.push({ nome, telefone, endereco, numero, complemento, bairro, cidade, estado, cep });
+    }
+    salvarClientes();
+    limparFormCliente();
+    renderizarClientes();
+    carregarClientesSelect();
+    atualizarDashboard();
+  }
+
+  function editarCliente(index) {
+    const c = clientes[index];
+    document.getElementById('cliNome').value = c.nome;
+    document.getElementById('cliTelefone').value = c.telefone || '';
+    document.getElementById('cliEndereco').value = c.endereco || '';
+    document.getElementById('cliNumero').value = c.numero || '';
+    document.getElementById('cliComplemento').value = c.complemento || '';
+    document.getElementById('cliBairro').value = c.bairro || '';
+    document.getElementById('cliCidade').value = c.cidade || '';
+    document.getElementById('cliEstado').value = c.estado || '';
+    document.getElementById('cliCep').value = c.cep || '';
+    document.getElementById('editClienteIndex').value = index;
+    document.getElementById('btnCancelarCliente').classList.remove('hidden');
+  }
+
+  function excluirCliente(index) {
+    if (confirm('Remover este cliente?')) {
+      clientes.splice(index, 1);
+      salvarClientes();
+      renderizarClientes();
+      carregarClientesSelect();
+    }
+  }
+
+  function limparFormCliente() {
+    document.getElementById('cliNome').value = '';
+    document.getElementById('cliTelefone').value = '';
+    document.getElementById('cliEndereco').value = '';
+    document.getElementById('cliNumero').value = '';
+    document.getElementById('cliComplemento').value = '';
+    document.getElementById('cliBairro').value = '';
+    document.getElementById('cliCidade').value = '';
+    document.getElementById('cliEstado').value = '';
+    document.getElementById('cliCep').value = '';
+    document.getElementById('editClienteIndex').value = '-1';
+    document.getElementById('btnCancelarCliente').classList.add('hidden');
+  }
+
+  document.getElementById('btnSalvarCliente').addEventListener('click', salvarCliente);
+  document.getElementById('btnCancelarCliente').addEventListener('click', limparFormCliente);
+  document.getElementById('btnAbrirMapaCliente').addEventListener('click', () => {
+    const cliente = {
+      endereco: document.getElementById('cliEndereco').value.trim(),
+      numero: document.getElementById('cliNumero').value.trim(),
+      complemento: document.getElementById('cliComplemento').value.trim(),
+      bairro: document.getElementById('cliBairro').value.trim(),
+      cidade: document.getElementById('cliCidade').value.trim(),
+      estado: document.getElementById('cliEstado').value.trim(),
+      cep: document.getElementById('cliCep').value.trim()
+    };
+    const endereco = montarEnderecoCompleto(cliente);
+    if (!endereco) { alert('Preencha o endereço para ver no mapa.'); return; }
+    abrirGoogleMapsRota(endereco);
+  });
+
+  function carregarClientesSelect() {
+    const select = document.getElementById('pdvClienteSelect');
+    const atual = select.value;
+    select.innerHTML = '<option value="">Consumidor final</option>';
+    clientes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.nome;
+      opt.textContent = c.nome;
+      select.appendChild(opt);
+    });
+    if (atual) select.value = atual;
+  }
+
+  // ============================================================
+  //  DASHBOARD, PRODUTOS, MOTOBOYS, PEDIDOS, CAIXA
+  // ============================================================
+  function atualizarDashboard() {
+    const hoje = new Date().toISOString().split('T')[0];
+    const pedidosHoje = pedidos.filter(p => p.data && p.data.startsWith(hoje));
+    const totalPedidos = pedidos.length;
+    const totalVendas = pedidosHoje.reduce((acc, p) => acc + p.total, 0);
+    const pendentes = pedidos.filter(p => p.status === 'pendente').length;
+    const emRota = pedidos.filter(p => p.status === 'rota').length;
+    document.getElementById('totalPedidos').textContent = totalPedidos;
+    document.getElementById('totalVendasHoje').textContent = 'R$ ' + totalVendas.toFixed(2);
+    document.getElementById('pedidosPendentes').textContent = pendentes;
+    document.getElementById('pedidosRota').textContent = emRota;
+    const ultimos = pedidos.slice(-5).reverse();
+    const container = document.getElementById('ultimosPedidos');
+    if (ultimos.length === 0) {
+      container.innerHTML = '<div class="vazio">Nenhum pedido realizado.</div>';
+    } else {
+      let html = '<ul style="list-style:none;padding:0;">';
+      ultimos.forEach(p => {
+        const statusMap = { pendente: 'Pendente', rota: 'Em rota', entregue: 'Entregue' };
+        const statusClass = 'status-' + p.status;
+        html += `<li style="padding:6px 0;border-bottom:1px solid #bbdefb;display:flex;justify-content:space-between;flex-wrap:wrap;">
+          <span>#${p.id || '?'} - ${p.cliente} - R$ ${p.total.toFixed(2)}</span>
+          <span class="status-badge ${statusClass}">${statusMap[p.status] || p.status}</span>
+        </li>`;
+      });
+      html += '</ul>';
+      container.innerHTML = html;
+    }
+  }
+
+  function renderizarProdutos() {
+    const tbody = document.getElementById('tabelaProdutos');
+    const busca = document.getElementById('buscaProduto').value.toLowerCase();
+    let filtrados = produtos;
+    if (busca) {
+      filtrados = produtos.filter(p => p.nome.toLowerCase().includes(busca));
+    }
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum produto encontrado.</td></tr>';
+      return;
+    }
+    let html = '';
+    filtrados.forEach((p, idx) => {
+      const originalIndex = produtos.indexOf(p);
+      html += `<tr>
+        <td>${p.nome}</td>
+        <td>R$ ${p.pequena.toFixed(2)}</td>
+        <td>R$ ${p.media.toFixed(2)}</td>
+        <td>R$ ${p.grande.toFixed(2)}</td>
+        <td>
+          <button onclick="editarProduto(${originalIndex})">✏️</button>
+          <button class="excluir" onclick="excluirProduto(${originalIndex})" style="color:#d32f2f;background:none;border:none;cursor:pointer;">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  document.getElementById('buscaProduto').addEventListener('input', renderizarProdutos);
+
+  function salvarProduto() {
+    const nome = document.getElementById('prodNome').value.trim();
+    const pequena = parseFloat(document.getElementById('prodPq').value);
+    const media = parseFloat(document.getElementById('prodMd').value);
+    const grande = parseFloat(document.getElementById('prodGd').value);
+    if (!nome || isNaN(pequena) || isNaN(media) || isNaN(grande)) {
+      alert('Preencha todos os campos corretamente.');
+      return;
+    }
+    const editIdx = parseInt(document.getElementById('editProdutoIndex').value);
+    if (editIdx >= 0) {
+      produtos[editIdx] = { nome, pequena, media, grande };
+      document.getElementById('editProdutoIndex').value = '-1';
+      document.getElementById('btnCancelarProduto').classList.add('hidden');
+    } else {
+      produtos.push({ nome, pequena, media, grande });
+    }
+    salvarProdutos();
+    limparFormProduto();
+    renderizarProdutos();
+    carregarProdutosSelect();
+  }
+
+  function editarProduto(index) {
+    const p = produtos[index];
+    document.getElementById('prodNome').value = p.nome;
+    document.getElementById('prodPq').value = p.pequena;
+    document.getElementById('prodMd').value = p.media;
+    document.getElementById('prodGd').value = p.grande;
+    document.getElementById('editProdutoIndex').value = index;
+    document.getElementById('btnCancelarProduto').classList.remove('hidden');
+  }
+
+  function excluirProduto(index) {
+    if (confirm('Remover este produto?')) {
+      produtos.splice(index, 1);
+      salvarProdutos();
+      renderizarProdutos();
+      carregarProdutosSelect();
+    }
+  }
+
+  function limparFormProduto() {
+    document.getElementById('prodNome').value = '';
+    document.getElementById('prodPq').value = '';
+    document.getElementById('prodMd').value = '';
+    document.getElementById('prodGd').value = '';
+    document.getElementById('editProdutoIndex').value = '-1';
+    document.getElementById('btnCancelarProduto').classList.add('hidden');
+  }
+
+  document.getElementById('btnSalvarProduto').addEventListener('click', salvarProduto);
+  document.getElementById('btnCancelarProduto').addEventListener('click', limparFormProduto);
+
+  function renderizarMotoboys() {
+    const tbody = document.getElementById('tabelaMotoboys');
+    if (motoboys.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="vazio">Nenhum motoboy cadastrado.</td></tr>';
+      return;
+    }
+    let html = '';
+    motoboys.forEach((m, idx) => {
+      html += `<tr>
+        <td>${m.nome}</td>
+        <td>${m.telefone || '-'}</td>
+        <td>
+          <button onclick="editarMoto(${idx})">✏️</button>
+          <button class="excluir" onclick="excluirMoto(${idx})" style="color:#d32f2f;background:none;border:none;cursor:pointer;">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function salvarMoto() {
+    const nome = document.getElementById('motoNome').value.trim();
+    const telefone = document.getElementById('motoTelefone').value.trim();
+    if (!nome) { alert('Digite o nome do motoboy.'); return; }
+    const editIdx = parseInt(document.getElementById('editMotoIndex').value);
+    if (editIdx >= 0) {
+      motoboys[editIdx] = { nome, telefone };
+      document.getElementById('editMotoIndex').value = '-1';
+      document.getElementById('btnCancelarMoto').classList.add('hidden');
+    } else {
+      motoboys.push({ nome, telefone });
+    }
+    salvarMotoboys();
+    limparFormMoto();
+    renderizarMotoboys();
+  }
+
+  function editarMoto(index) {
+    const m = motoboys[index];
+    document.getElementById('motoNome').value = m.nome;
+    document.getElementById('motoTelefone').value = m.telefone || '';
+    document.getElementById('editMotoIndex').value = index;
+    document.getElementById('btnCancelarMoto').classList.remove('hidden');
+  }
+
+  function excluirMoto(index) {
+    if (confirm('Remover este motoboy?')) {
+      motoboys.splice(index, 1);
+      salvarMotoboys();
+      renderizarMotoboys();
+    }
+  }
+
+  function limparFormMoto() {
+    document.getElementById('motoNome').value = '';
+    document.getElementById('motoTelefone').value = '';
+    document.getElementById('editMotoIndex').value = '-1';
+    document.getElementById('btnCancelarMoto').classList.add('hidden');
+  }
+
+  document.getElementById('btnSalvarMoto').addEventListener('click', salvarMoto);
+  document.getElementById('btnCancelarMoto').addEventListener('click', limparFormMoto);
+
+  function renderizarPedidos() {
+    const tbody = document.getElementById('tabelaPedidos');
+    if (pedidos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="vazio">Nenhum pedido.</td></tr>';
+      return;
+    }
+    let html = '';
+    const lista = pedidos.slice().reverse();
+    lista.forEach(p => {
+      const statusMap = { pendente: 'Pendente', rota: 'Em rota', entregue: 'Entregue' };
+      const statusClass = 'status-' + p.status;
+      const itemsStr = p.itens.map(i => `${i.nome} (${i.tamanho}) x${i.qtd}`).join(', ');
+      const enderecoStr = p.endereco || 'Endereço não informado';
+      html += `<tr>
+        <td>#${p.id}</td>
+        <td>${p.cliente}</td>
+        <td>${itemsStr}</td>
+        <td>R$ ${p.total.toFixed(2)}</td>
+        <td><span class="status-badge ${statusClass}">${statusMap[p.status] || p.status}</span></td>
+        <td>${p.motoboy || '-'}</td>
+        <td>${enderecoStr}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function renderizarCaixa() {
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('dataCaixa').textContent = hoje;
+    const vendasHoje = pedidos.filter(p => p.data && p.data.startsWith(hoje));
+    const total = vendasHoje.reduce((acc, p) => acc + p.total, 0);
+    document.getElementById('caixaTotal').textContent = 'R$ ' + total.toFixed(2);
+    document.getElementById('caixaQtd').textContent = vendasHoje.length;
+    const tbody = document.getElementById('tabelaCaixa');
+    if (vendasHoje.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhuma venda hoje.</td></tr>';
+      return;
+    }
+    let html = '';
+    vendasHoje.slice().reverse().forEach(p => {
+      const hora = p.data ? new Date(p.data).toLocaleTimeString() : '-';
+      const itemsStr = p.itens.map(i => `${i.nome} (${i.tamanho}) x${i.qtd}`).join(', ');
+      html += `<tr>
+        <td>${hora}</td>
+        <td>${p.cliente}</td>
+        <td>${itemsStr}</td>
+        <td>R$ ${p.total.toFixed(2)}</td>
+        <td>${p.pagamento || '-'}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  // ============================================================
+  //  CONFIGURAÇÕES DA EMPRESA
+  // ============================================================
+  function carregarConfiguracoes() {
+    document.getElementById('configNome').value = EMPRESA.nome || '';
+    document.getElementById('configEndereco').value = EMPRESA.endereco || '';
+    document.getElementById('configCidade').value = EMPRESA.cidade || '';
+    document.getElementById('configTelefone').value = EMPRESA.telefone || '';
+    document.getElementById('configCnpj').value = EMPRESA.cnpj || '';
+  }
+
+  function salvarConfiguracoes() {
+    const nome = document.getElementById('configNome').value.trim();
+    const endereco = document.getElementById('configEndereco').value.trim();
+    const cidade = document.getElementById('configCidade').value.trim();
+    const telefone = document.getElementById('configTelefone').value.trim();
+    const cnpj = document.getElementById('configCnpj').value.trim();
+    if (!nome) { alert('O nome da empresa é obrigatório.'); return; }
+    EMPRESA = { nome, endereco, cidade, telefone, cnpj };
+    salvarEmpresa();
+    document.getElementById('empresaNomeTopo').textContent = nome;
+    atualizarPDV();
+    alert('✅ Configurações salvas com sucesso!');
+  }
+
+  function resetarConfiguracoes() {
+    if (confirm('Restaurar dados padrão da empresa?')) {
+      EMPRESA = {
+        nome: 'Pizzaria Livre',
+        endereco: 'Rua Exemplo, 123 - Centro',
+        cidade: 'São Paulo - SP',
+        telefone: '(11) 99999-8888',
+        cnpj: '12.345.678/0001-99'
+      };
+      salvarEmpresa();
+      carregarConfiguracoes();
+      document.getElementById('empresaNomeTopo').textContent = EMPRESA.nome;
+      atualizarPDV();
+      alert('✅ Configurações restauradas para o padrão.');
+    }
+  }
+
+  document.getElementById('btnSalvarConfig').addEventListener('click', salvarConfiguracoes);
+  document.getElementById('btnResetConfig').addEventListener('click', resetarConfiguracoes);
+
+  // ============================================================
+  //  PDV (Caixa)
+  // ============================================================
+  function carregarProdutosSelect() {
+    const select = document.getElementById('pdvProdutoSelect');
+    const atual = select.value;
+    select.innerHTML = '<option value="">Selecione</option>';
+    produtos.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.nome;
+      opt.textContent = p.nome;
+      select.appendChild(opt);
+    });
+    if (atual) select.value = atual;
+  }
+
+  function adicionarAoCarrinho() {
+    const nomeProduto = document.getElementById('pdvProdutoSelect').value;
+    const tamanho = document.getElementById('pdvTamanhoSelect').value;
+    const qtd = parseInt(document.getElementById('pdvQtd').value) || 1;
+    if (!nomeProduto) { alert('Selecione um produto.'); return; }
+    const produto = produtos.find(p => p.nome === nomeProduto);
+    if (!produto) return;
+    let preco = 0;
+    const tamanhos = { pequena: 'pequena', media: 'media', grande: 'grande' };
+    preco = produto[tamanhos[tamanho]];
+    if (!preco) { alert('Preço não definido para este tamanho.'); return; }
+    carrinhoPDV.push({
+      nome: nomeProduto,
+      tamanho: tamanho,
+      qtd: qtd,
+      precoUnit: preco
+    });
+    document.getElementById('pdvQtd').value = '1';
+    atualizarPDV();
+  }
+
+  function removerItemPDV(index) {
+    carrinhoPDV.splice(index, 1);
+    atualizarPDV();
+  }
+
+  function limparCarrinho() {
+    if (carrinhoPDV.length === 0) return;
+    if (confirm('Limpar carrinho?')) {
+      carrinhoPDV = [];
+      atualizarPDV();
+    }
+  }
+
+  function atualizarPDV() {
+    const tbody = document.getElementById('tabelaPDV');
+    const cupom = document.getElementById('cupomPDV');
+    let subtotal = 0;
+    if (carrinhoPDV.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="vazio">Carrinho vazio</td></tr>';
+      let textoEmpresa = `${EMPRESA.nome || 'Pizzaria Livre'}\n${EMPRESA.endereco || ''}\n${EMPRESA.cidade || ''}\nTel: ${EMPRESA.telefone || ''}  CNPJ: ${EMPRESA.cnpj || ''}\n${'='.repeat(30)}\n\nNenhum item adicionado.`;
+      cupom.textContent = textoEmpresa;
+      document.getElementById('pdvSubtotal').textContent = 'R$ 0,00';
+      document.getElementById('pdvTotal').textContent = 'R$ 0,00';
+      return;
+    }
+    let html = '';
+    carrinhoPDV.forEach((item, idx) => {
+      const total = item.qtd * item.precoUnit;
+      subtotal += total;
+      html += `<tr>
+        <td>${item.nome}</td>
+        <td>${item.tamanho}</td>
+        <td>${item.qtd}</td>
+        <td>R$ ${item.precoUnit.toFixed(2)}</td>
+        <td>R$ ${total.toFixed(2)}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removerItemPDV(${idx})">✕</button></td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+    let cupomText = `${EMPRESA.nome || 'Pizzaria Livre'}\n`;
+    cupomText += `${EMPRESA.endereco || ''}\n`;
+    cupomText += `${EMPRESA.cidade || ''}\n`;
+    cupomText += `Tel: ${EMPRESA.telefone || ''}  CNPJ: ${EMPRESA.cnpj || ''}\n`;
+    cupomText += '='.repeat(30) + '\n\n';
+    carrinhoPDV.forEach(item => {
+      const total = item.qtd * item.precoUnit;
+      cupomText += `${item.nome} (${item.tamanho}) x${item.qtd}  R$ ${total.toFixed(2)}\n`;
+    });
+    cupomText += '\n' + '-'.repeat(30) + '\n';
+    cupomText += `Subtotal: R$ ${subtotal.toFixed(2)}\n`;
+    cupomText += `Total: R$ ${subtotal.toFixed(2)}\n`;
+    cupomText += '='.repeat(30) + '\n';
+    cupomText += `Obrigado!`;
+    cupom.textContent = cupomText;
+    document.getElementById('pdvSubtotal').textContent = 'R$ ' + subtotal.toFixed(2);
+    document.getElementById('pdvTotal').textContent = 'R$ ' + subtotal.toFixed(2);
+  }
+
+  function finalizarVendaPDV() {
+    if (carrinhoPDV.length === 0) { alert('Carrinho vazio.'); return; }
+    const clienteSelect = document.getElementById('pdvClienteSelect');
+    const clienteNome = clienteSelect.value || 'Consumidor final';
+    const pagamento = document.getElementById('pdvPagamento').value;
+    const total = carrinhoPDV.reduce((acc, item) => acc + (item.qtd * item.precoUnit), 0);
+    let clienteEndereco = null;
+    const clienteObj = clientes.find(c => c.nome === clienteNome);
+    if (clienteObj) {
+      clienteEndereco = montarEnderecoCompleto(clienteObj);
+    }
+    const id = Date.now().toString().slice(-6);
+    const pedido = {
+      id: id,
+      cliente: clienteNome,
+      itens: carrinhoPDV.map(item => ({ ...item })),
+      total: total,
+      pagamento: pagamento,
+      status: 'pendente',
+      data: new Date().toISOString(),
+      motoboy: null,
+      endereco: clienteEndereco || 'Endereço não informado'
+    };
+    pedidos.push(pedido);
+    salvarPedidos();
+    carrinhoPDV = [];
+    atualizarPDV();
+    alert(`✅ Pedido #${id} finalizado!\nTotal: R$ ${total.toFixed(2)}\nPagamento: ${pagamento}\nStatus: Aguardando motoboy.`);
+    atualizarTudo();
+  }
+
+  document.getElementById('btnAddProdutoPDV').addEventListener('click', adicionarAoCarrinho);
+  document.getElementById('btnLimparPDV').addEventListener('click', limparCarrinho);
+  document.getElementById('btnFinalizarPDV').addEventListener('click', finalizarVendaPDV);
+
+  // ============================================================
+  //  PDF e IMPRESSÃO
+  // ============================================================
+  function getCupomTexto() {
+    return document.getElementById('cupomPDV').textContent;
+  }
+
+  function gerarPDF() {
+    const cupomText = getCupomTexto();
+    if (!cupomText || (cupomText.includes('Nenhum item adicionado') && carrinhoPDV.length === 0)) {
+      alert('Carrinho vazio. Adicione itens para gerar o PDF.');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
+    doc.setFontSize(10);
+    const lines = cupomText.split('\n');
+    let y = 10;
+    lines.forEach(line => {
+      if (y > 180) { doc.addPage(); y = 10; }
+      doc.text(line, 5, y);
+      y += 5;
+    });
+    doc.save('cupom_pizzaria.pdf');
+  }
+
+  function imprimirCupom() {
+    const cupomText = getCupomTexto();
+    if (!cupomText || (cupomText.includes('Nenhum item adicionado') && carrinhoPDV.length === 0)) {
+      alert('Carrinho vazio. Adicione itens para imprimir.');
+      return;
+    }
+    const win = window.open('', '_blank', 'width=400,height=600');
+    win.document.write('<html><head><title>Cupom</title>');
+    win.document.write('<style>body { font-family: monospace; white-space: pre-wrap; padding: 20px; }</style>');
+    win.document.write('</head><body>');
+    win.document.write('<pre>' + cupomText + '</pre>');
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
+  }
+
+  document.getElementById('btnGerarPDF').addEventListener('click', gerarPDF);
+  document.getElementById('btnImprimirCupom').addEventListener('click', imprimirCupom);
+
+  // ============================================================
+  //  ENTREGAS (motoboy)
+  // ============================================================
+  function renderizarEntregas() {
+    const container = document.getElementById('listaEntregas');
+    const pendentes = pedidos.filter(p => p.status === 'pendente' || p.status === 'rota');
+    if (pendentes.length === 0) {
+      container.innerHTML = '<div class="vazio">Nenhum pedido pendente.</div>';
+      return;
+    }
+    let html = '';
+    pendentes.forEach((p, idx) => {
+      const isRota = p.status === 'rota';
+      const btnText = isRota ? '✅ Confirmar entrega' : '🛵 Aceitar pedido';
+      const btnClass = isRota ? 'btn-success' : 'btn-primary';
+      const enderecoStr = p.endereco || 'Endereço não informado';
+      html += `<div class="pedido-entrega">
+        <div class="info">
+          <div>
+            <strong>#${p.id}</strong> - ${p.cliente} - <strong>R$ ${p.total.toFixed(2)}</strong>
+            <div style="font-size:13px;color:#546e7a;">${p.itens.map(i => `${i.nome} (${i.tamanho}) x${i.qtd}`).join(', ')}</div>
+            <div style="font-size:12px;color:#546e7a;">Pagamento: ${p.pagamento}</div>
+            ${isRota ? `<div style="font-size:12px;color:#0d47a1;">Motoboy: ${p.motoboy}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="status-badge status-${p.status}">${p.status === 'pendente' ? 'Pendente' : 'Em rota'}</span>
+            <button class="btn ${btnClass} btn-sm" onclick="acaoMotoboy(${idx})">${btnText}</button>
+          </div>
+        </div>
+        <div class="endereco">
+          📍 ${enderecoStr}
+          ${enderecoStr && enderecoStr !== 'Endereço não informado' ? 
+            `<span class="mapa-link" onclick="abrirGoogleMapsRota('${encodeURIComponent(enderecoStr)}')">🗺️ Traçar rota</span>` : 
+            ''
+          }
+        </div>
+      </div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function acaoMotoboy(index) {
+    const pendentes = pedidos.filter(p => p.status === 'pendente' || p.status === 'rota');
+    const p = pendentes[index];
+    if (!p) return;
+    if (p.status === 'pendente') {
+      if (confirm(`Aceitar pedido #${p.id} para entrega?`)) {
+        p.status = 'rota';
+        p.motoboy = usuarioAtual.nome;
+        salvarPedidos();
+        renderizarEntregas();
+        atualizarDashboard();
+        renderizarPedidos();
+        alert('✅ Pedido aceito! Em rota para entrega.');
+      }
+    } else if (p.status === 'rota') {
+      if (confirm(`Confirmar que o pedido #${p.id} foi entregue?`)) {
+        p.status = 'entregue';
+        salvarPedidos();
+        renderizarEntregas();
+        atualizarDashboard();
+        renderizarPedidos();
+        alert('✅ Pedido entregue com sucesso!');
+      }
+    }
+  }
+
+  // ============================================================
+  //  INICIALIZAÇÃO
+  // ============================================================
+  carregarDados().then(() => {
+    console.log('🍕 Pizzaria Livre conectada ao Firebase!');
+  });
+</script>
+</body>
+</html>
